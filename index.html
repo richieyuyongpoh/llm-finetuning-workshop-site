@@ -59,6 +59,16 @@
             transition: all 0.3s ease-in-out;
             box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.2);
         }
+        /* Dynamic scroll appearance for FAB */
+        #chat-fab {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: translateY(100px);
+            opacity: 0;
+        }
+        #chat-fab.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -216,7 +226,7 @@
             </div>
         </div>
         <!-- Floating Action Button (FAB) -->
-        <button id="chat-fab" class="w-16 h-16 bg-sky-500 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-sky-600 transition-all transform hover:scale-110">
+        <button id="chat-fab" class="w-16 h-16 bg-sky-500 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-sky-600 transition-all">
             <i data-feather="message-square" class="w-8 h-8"></i>
         </button>
     </div>
@@ -323,7 +333,6 @@
         const aiQuestionInput = document.getElementById('aiQuestionInput');
         const chatHistoryEl = document.getElementById('chat-history');
         
-        // This array will store the full conversation history
         let conversationHistory = [];
 
         const renderChatHistory = () => {
@@ -332,7 +341,6 @@
                 const messageEl = document.createElement('div');
                 messageEl.classList.add('flex', 'items-start', 'gap-2.5');
                 
-                // **FIXED BUG**: Accessing message.parts[0].text instead of message.content
                 let formattedContent = message.parts[0].text
                     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-sky-300">$1</strong>')
                     .replace(/\n/g, '<br>');
@@ -374,28 +382,45 @@
             renderChatHistory();
         };
 
-        const toggleChat = () => {
-            chatWindow.classList.toggle('hidden');
-            chatWindow.classList.toggle('flex');
-            chatFab.classList.toggle('hidden');
-            if (!chatWindow.classList.contains('hidden')) {
+        const toggleChat = (forceClose = false) => {
+            if (forceClose || !chatWindow.classList.contains('hidden')) {
+                chatWindow.classList.add('hidden');
+                chatWindow.classList.remove('flex');
+                chatFab.classList.remove('hidden');
+            } else {
+                chatWindow.classList.remove('hidden');
+                chatWindow.classList.add('flex');
+                chatFab.classList.add('hidden');
                 initializeChat();
                 aiQuestionInput.focus();
             }
         };
 
-        chatFab.addEventListener('click', toggleChat);
-        closeChatBtn.addEventListener('click', toggleChat);
+        chatFab.addEventListener('click', () => toggleChat());
+        closeChatBtn.addEventListener('click', () => toggleChat());
+
+        const handleScroll = () => {
+            if (window.scrollY > 200) {
+                if(chatWindow.classList.contains('hidden')) {
+                   chatFab.classList.add('visible');
+                }
+            } else {
+                chatFab.classList.remove('visible');
+                if (!chatWindow.classList.contains('hidden')) {
+                    toggleChat(true); // Force close if scrolled to top
+                }
+            }
+        };
+        
+        window.addEventListener('scroll', handleScroll);
 
         const askAI = async () => {
             const question = aiQuestionInput.value.trim();
             if (!question) return;
 
-            // Add user message to history and render
             conversationHistory.push({ role: 'user', parts: [{ text: question }] });
             renderChatHistory();
             
-            // Show loading indicator
             const loadingEl = document.createElement('div');
             loadingEl.classList.add('flex', 'items-start', 'gap-2.5', 'model-thinking');
             loadingEl.innerHTML = `
@@ -430,20 +455,16 @@
 7.  **Stay On Topic:** Your knowledge is strictly limited to the topics of this workshop: Large Language Models (LLMs), fine-tuning, parameter-efficient fine-tuning (PEFT/LoRA), Google's Gemma and Gemini models, and the Python/Hugging Face ecosystem. Do not answer questions about unrelated topics.
 `;
             
-            // Construct the full history for the API call, including the system prompt and the conversation so far.
             const apiHistory = [
                 {role: 'user', parts: [{text: systemPrompt}]},
                 {role: 'model', parts: [{text: "Understood. I am Jane, Dr. Yu's AI assistant. How can I help with the workshop topics?"}]},
                 ...conversationHistory
             ];
             
-            // **FIXED BUG**: Pass the entire history to the API call function.
             const response = await callGemini(apiHistory);
             
-            // Remove loading indicator
             chatHistoryEl.removeChild(loadingEl);
 
-            // Add model response to history and render
             conversationHistory.push({ role: 'model', parts: [{ text: response }] });
             renderChatHistory();
             
@@ -458,6 +479,9 @@
                 askAI();
             }
         });
+
+        // Initial check for scroll position on page load
+        handleScroll();
 
     </script>
 </body>
