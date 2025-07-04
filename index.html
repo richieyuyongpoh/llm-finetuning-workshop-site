@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Practical LLM Fine-Tuning Workshop</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Feather Icons for a clean look -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <style>
+        /* Apply the Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617; /* bg-slate-950 */
+            color: #e2e8f0; /* bg-slate-200 */
+        }
+        /* Custom scrollbar for a more polished look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a; /* bg-slate-900 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #38bdf8; /* bg-sky-400 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #0ea5e9; /* bg-sky-500 */
+        }
+        /* Styles for the modal */
+        .modal-backdrop {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+        /* Gradient border effect */
+        .gradient-border {
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            border-image: linear-gradient(to bottom right, #38bdf8, #0ea5e9);
+            border-image-slice: 1;
+        }
+        /* Chatbot pop-up styles */
+        #chat-widget {
+            transition: all 0.3s ease-in-out;
+        }
+        #chat-window {
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
+        
+        <!-- Header Section -->
+        <header class="text-center my-12 lg:my-16">
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">
+                <span class="bg-gradient-to-r from-sky-400 to-cyan-300 bg-clip-text text-transparent">
+                    Practical LLM Fine-Tuning
+                </span>
+            </h1>
+            <p class="mt-4 text-lg text-slate-400 max-w-3xl mx-auto">
+                A hands-on workshop on transforming generalist models into domain experts with Google's Gemma.
+            </p>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="space-y-12">
+            
+            <!-- Materials Section (Deck & Colab) -->
+            <section id="materials">
+                <h2 class="text-3xl font-bold text-center mb-8">Workshop Materials</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Presentation Deck -->
+                    <div class="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800">
+                        <div class="flex items-center gap-4 mb-4">
+                            <i data-feather="monitor" class="w-8 h-8 text-sky-400"></i>
+                            <h3 class="text-2xl font-bold">Presentation Deck</h3>
+                        </div>
+                        <p class="text-slate-400 mb-4">Follow along with the slides. You can also download the PDF for your reference.</p>
+                        <div class="aspect-video rounded-lg overflow-hidden border-2 border-slate-700">
+                            <iframe 
+                                src="https://drive.google.com/file/d/131q5KFhYQvIjefBa3PkLn3JimPmtKdzc/preview" 
+                                width="100%" 
+                                height="100%" 
+                                allow="autoplay"
+                                class="rounded-lg">
+                            </iframe>
+                        </div>
+                    </div>
+                    <!-- Colab Notebook -->
+                    <div class="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 flex flex-col">
+                        <div class="flex items-center gap-4 mb-4">
+                           <i data-feather="code" class="w-8 h-8 text-sky-400"></i>
+                           <h3 class="text-2xl font-bold">Hands-On Lab</h3>
+                        </div>
+                        <p class="text-slate-400 mb-4 flex-grow">This is where the magic happens! Click the button to open the Google Colab notebook. Remember to "Save a copy in Drive" to start.</p>
+                        <a href="https://colab.research.google.com/drive/131c7aWznHRs3HZlu2vFXJBys4MX3pfD3?usp=sharing" 
+                           target="_blank"
+                           class="w-full flex items-center justify-center text-center bg-sky-500 hover:bg-sky-600 text-white font-bold py-4 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-lg text-lg">
+                            <i data-feather="external-link" class="w-6 h-6 mr-3"></i>
+                            Open Colab Lab
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Agenda & Instructor Section -->
+            <section id="details" class="grid grid-cols-1 lg:grid-cols-5 gap-8 mt-16">
+                
+                <!-- Agenda -->
+                <div class="lg:col-span-2 bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800">
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-3 mb-6">
+                        <h2 class="text-2xl font-bold">Agenda</h2>
+                        <button id="explainAgendaBtn" class="text-xs bg-sky-500 hover:bg-sky-600 text-white font-semibold py-1 px-3 rounded-full transition-colors flex items-center gap-1">
+                            <i data-feather="zap" class="w-3 h-3"></i> Get Details
+                        </button>
+                    </div>
+                    <ol id="agendaList" class="relative border-l border-slate-700">                  
+                        <li class="mb-10 ml-6">            
+                            <span class="absolute flex items-center justify-center w-6 h-6 bg-sky-500 rounded-full -left-3 ring-8 ring-slate-900">
+                                <i data-feather="book-open" class="w-3 h-3 text-white"></i>
+                            </span>
+                            <h3 class="flex items-center mb-1 text-lg font-semibold text-white">Part 1: Foundations</h3>
+                            <time class="block mb-2 text-sm font-normal leading-none text-sky-400">65 Minutes</time>
+                            <p class="text-base font-normal text-slate-400">Core concepts, general vs. specific models, and understanding the fine-tuning process.</p>
+                        </li>
+                        <li class="mb-10 ml-6">
+                            <span class="absolute flex items-center justify-center w-6 h-6 bg-sky-500 rounded-full -left-3 ring-8 ring-slate-900">
+                                <i data-feather="tool" class="w-3 h-3 text-white"></i>
+                            </span>
+                            <h3 class="mb-1 text-lg font-semibold text-white">Part 2: Hands-On Application</h3>
+                            <time class="block mb-2 text-sm font-normal leading-none text-sky-400">95 Minutes</time>
+                            <p class="text-base font-normal text-slate-400">Live demo followed by the participant lab where you fine-tune your own model.</p>
+                        </li>
+                        <li class="ml-6">
+                            <span class="absolute flex items-center justify-center w-6 h-6 bg-sky-500 rounded-full -left-3 ring-8 ring-slate-900">
+                                <i data-feather="award" class="w-3 h-3 text-white"></i>
+                            </span>
+                            <h3 class="mb-1 text-lg font-semibold text-white">Part 3: Wrap-Up</h3>
+                            <time class="block mb-2 text-sm font-normal leading-none text-sky-400">20 Minutes</time>
+                            <p class="text-base font-normal text-slate-400">Real-world use cases, Q&A, and discussion of next steps.</p>
+                        </li>
+                    </ol>
+                </div>
+
+                <!-- Instructor -->
+                <div class="lg:col-span-3 bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 flex flex-col">
+                    <div>
+                        <h3 class="text-2xl font-bold">About Your Instructor</h3>
+                        <p class="text-lg text-sky-400 mt-1">Dr. Yu Yong Poh, Deputy Director</p>
+                        <p class="text-slate-400 mt-4 text-sm text-left leading-relaxed">
+                            Assoc Prof Dr. Yu Yong Poh is a seasoned data scientist and academic with 15 years of experience in both industry and academia. He holds a PhD from the University of Malaya and currently serves as the Deputy Director of the Centre for Business Incubation and Entrepreneurial Ventures, where he fosters academic-industry collaboration and promotes startups. Dr. Yu has successfully delivered numerous data science and AI projects across various sectors, including banking, healthcare, manufacturing, and digital marketing. He is also an active trainer and researcher, specializing in unstructured data modeling, data science, and analytics. Dr. Yu has published extensively and holds several professional certifications, including SAS Certified Predictive Modeler and recognition as a Professional Technologist by the Malaysia Board of Technologists.
+                        </p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="text-center mt-16 py-6 border-t border-slate-800">
+            <p class="text-slate-500 text-sm leading-relaxed">
+                &copy; 2025 Yu Yong Poh. All Rights Reserved. <br>
+                Workshop materials created with assistance from Gemini. <br>
+                <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" class="hover:text-sky-400 transition-colors underline">
+                    This work is licensed under a CC BY-NC 4.0 License.
+                </a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- AI Chatbot Widget -->
+    <div id="chat-widget" class="fixed bottom-8 right-8 z-50">
+        <!-- Chat Window -->
+        <div id="chat-window" class="w-80 sm:w-96 h-[500px] bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-2xl flex-col border border-slate-700 hidden">
+            <!-- Header -->
+            <div class="flex justify-between items-center p-4 border-b border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-cyan-300 flex items-center justify-center">
+                        <i data-feather="user" class="w-6 h-6 text-slate-900"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold">Jane</h3>
+                        <p class="text-xs text-slate-400">AI Workshop Assistant</p>
+                    </div>
+                </div>
+                <button id="close-chat-btn" class="text-slate-500 hover:text-white">
+                    <i data-feather="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <!-- Message History -->
+            <div id="chat-history" class="flex-1 p-4 overflow-y-auto space-y-4">
+                <!-- Messages will be injected here -->
+            </div>
+            <!-- Input Area -->
+            <div class="p-4 border-t border-slate-800">
+                <div class="flex gap-2 items-center">
+                    <input type="text" id="aiQuestionInput" class="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none" placeholder="Ask about the workshop...">
+                    <button id="askAiBtn" class="bg-sky-500 hover:bg-sky-600 text-white font-bold p-2 rounded-md transition-colors disabled:bg-slate-600">
+                        <i data-feather="send" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Floating Action Button (FAB) -->
+        <button id="chat-fab" class="w-16 h-16 bg-sky-500 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-sky-600 transition-all transform hover:scale-110">
+            <i data-feather="message-square" class="w-8 h-8"></i>
+        </button>
+    </div>
+
+    <!-- Modal for Agenda Details -->
+    <div id="agendaModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden modal-backdrop">
+        <div class="bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl p-6 sm:p-8 modal-content transform scale-95 gradient-border">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold text-white">✨ Agenda Details</h3>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-white"><i data-feather="x" class="w-6 h-6"></i></button>
+            </div>
+            <div id="modalContent" class="text-slate-300 space-y-4 max-h-[70vh] overflow-y-auto pr-3">
+                <!-- Gemini content will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Initialize Feather Icons ---
+        feather.replace();
+
+        // --- Gemini API Call Function ---
+        async function callGemini(history) {
+            // WARNING: In a real-world application, this API key should be on a backend server,
+            // not exposed in the frontend JavaScript. This is for demonstration purposes only.
+            const apiKey = "AIzaSyD4eIgapmq5brCvdFb99JGidI65qrItUqI"; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: history
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API call failed with status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    return result.candidates[0].content.parts[0].text;
+                } else {
+                    console.error("Unexpected API response structure:", result);
+                    return "Sorry, I couldn't get a response. The API returned an unexpected format.";
+                }
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                return "An error occurred while trying to contact the AI assistant. Please check the console for details.";
+            }
+        }
+
+        // --- Agenda Explainer Feature ---
+        const explainAgendaBtn = document.getElementById('explainAgendaBtn');
+        const agendaModal = document.getElementById('agendaModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const modalContent = document.getElementById('modalContent');
+
+        explainAgendaBtn.addEventListener('click', async () => {
+            agendaModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            
+            modalContent.innerHTML = '<div class="flex justify-center items-center"><svg class="animate-spin h-5 w-5 mr-3 text-sky-400" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><p>Generating details with Gemini...</p></div>';
+            
+            const agendaItems = Array.from(document.querySelectorAll('#agendaList li'))
+                .map(item => item.querySelector('h3').textContent.trim() + ": " + item.querySelector('p').textContent.trim())
+                .join('\n');
+
+            const prompt = `You are a helpful AI assistant for a workshop. Your task is to explain the workshop agenda to participants in a friendly and engaging way. For each part, briefly describe what the participants will learn and why it's important. Keep it concise and encouraging. Here is the agenda:\n\n${agendaItems}`;
+            
+            const explanation = await callGemini([{ role: 'user', parts: [{ text: prompt }] }]);
+            
+            const formattedExplanation = explanation
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="text-sky-300 font-semibold">$1</strong>')
+                .replace(/\n/g, '<br><br>');
+
+            modalContent.innerHTML = formattedExplanation;
+        });
+
+        const closeModal = () => {
+            agendaModal.classList.add('hidden');
+            document.body.style.overflow = '';
+        };
+
+        closeModalBtn.addEventListener('click', closeModal);
+        agendaModal.addEventListener('click', (e) => {
+            if (e.target === agendaModal) {
+                closeModal();
+            }
+        });
+
+        // --- AI Chatbot Feature ---
+        const chatFab = document.getElementById('chat-fab');
+        const chatWindow = document.getElementById('chat-window');
+        const closeChatBtn = document.getElementById('close-chat-btn');
+        const askAiBtn = document.getElementById('askAiBtn');
+        const aiQuestionInput = document.getElementById('aiQuestionInput');
+        const chatHistoryEl = document.getElementById('chat-history');
+        
+        // This array will store the full conversation history
+        let conversationHistory = [];
+
+        const renderChatHistory = () => {
+            chatHistoryEl.innerHTML = '';
+            conversationHistory.forEach(message => {
+                const messageEl = document.createElement('div');
+                messageEl.classList.add('flex', 'items-start', 'gap-2.5');
+                
+                // **FIXED BUG**: Accessing message.parts[0].text instead of message.content
+                let formattedContent = message.parts[0].text
+                    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-sky-300">$1</strong>')
+                    .replace(/\n/g, '<br>');
+
+                if (message.role === 'user') {
+                    messageEl.classList.add('justify-end');
+                    messageEl.innerHTML = `
+                        <div class="flex flex-col gap-1 w-full max-w-[80%]">
+                            <div class="flex items-center space-x-2 rtl:space-x-reverse justify-end">
+                                <span class="text-sm font-semibold text-white">You</span>
+                            </div>
+                            <div class="leading-relaxed p-3 rounded-s-xl rounded-ee-xl bg-sky-600">
+                                <p class="text-sm font-normal text-white">${formattedContent}</p>
+                            </div>
+                        </div>
+                    `;
+                } else { // model
+                    messageEl.innerHTML = `
+                        <div class="flex flex-col gap-1 w-full max-w-[80%]">
+                            <div class="flex items-center space-x-2 rtl:space-x-reverse">
+                                <span class="text-sm font-semibold text-white">Jane</span>
+                            </div>
+                            <div class="leading-relaxed p-3 rounded-e-xl rounded-es-xl bg-slate-800">
+                                <p class="text-sm font-normal text-slate-300">${formattedContent}</p>
+                            </div>
+                        </div>
+                    `;
+                }
+                chatHistoryEl.appendChild(messageEl);
+            });
+            chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+        };
+
+        const initializeChat = () => {
+            conversationHistory = [{
+                role: 'model',
+                parts: [{ text: "Hi, I'm Jane, Dr. Yu's AI assistant. Ask me anything about the workshop topics!" }]
+            }];
+            renderChatHistory();
+        };
+
+        const toggleChat = () => {
+            chatWindow.classList.toggle('hidden');
+            chatWindow.classList.toggle('flex');
+            chatFab.classList.toggle('hidden');
+            if (!chatWindow.classList.contains('hidden')) {
+                initializeChat();
+                aiQuestionInput.focus();
+            }
+        };
+
+        chatFab.addEventListener('click', toggleChat);
+        closeChatBtn.addEventListener('click', toggleChat);
+
+        const askAI = async () => {
+            const question = aiQuestionInput.value.trim();
+            if (!question) return;
+
+            // Add user message to history and render
+            conversationHistory.push({ role: 'user', parts: [{ text: question }] });
+            renderChatHistory();
+            
+            // Show loading indicator
+            const loadingEl = document.createElement('div');
+            loadingEl.classList.add('flex', 'items-start', 'gap-2.5', 'model-thinking');
+            loadingEl.innerHTML = `
+                <div class="flex flex-col gap-1 w-full max-w-[80%]">
+                    <div class="flex items-center space-x-2 rtl:space-x-reverse">
+                        <span class="text-sm font-semibold text-white">Jane</span>
+                    </div>
+                    <div class="leading-relaxed p-3 rounded-e-xl rounded-es-xl bg-slate-800">
+                        <div class="flex items-center text-slate-400"><svg class="animate-spin h-4 w-4 mr-2 text-sky-400" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>Thinking...</span></div>
+                    </div>
+                </div>
+            `;
+            chatHistoryEl.appendChild(loadingEl);
+            chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+
+            askAiBtn.disabled = true;
+            aiQuestionInput.disabled = true;
+            aiQuestionInput.value = '';
+
+            const instructorBio = "Assoc Prof Dr. Yu Yong Poh is a seasoned data scientist and academic with 15 years of experience in both industry and academia. He holds a PhD from the University of Malaya and currently serves as the Deputy Director of the Centre for Business Incubation and Entrepreneurial Ventures, where he fosters academic-industry collaboration and promotes startups. Dr. Yu has successfully delivered numerous data science and AI projects across various sectors, including banking, healthcare, manufacturing, and digital marketing. He is also an active trainer and researcher, specializing in unstructured data modeling, data science, and analytics. Dr. Yu has published extensively and holds several professional certifications, including SAS Certified Predictive Modeler and recognition as a Professional Technologist by the Malaysia Board of Technologists.";
+            const agendaSummary = `The workshop is 3 hours long. Part 1 (65 min) covers Foundations like core concepts, general vs. specific models, and the fine-tuning process. Part 2 (95 min) is the Hands-On Application with a live demo and participant lab. Part 3 (20 min) is the Wrap-Up, discussing real-world use cases and Q&A.`;
+
+            const systemPrompt = `You are an expert AI assistant named "Jane". You are the personal assistant for Dr. Yu Yong Poh, the instructor of this technical workshop on LLM fine-tuning.
+
+**Your primary directives are:**
+1.  **Persona:** You are Jane, Dr. Yu's helpful and professional assistant.
+2.  **Know Your Context:** You are aware of the workshop's content. The agenda is: ${agendaSummary}.
+3.  **Introduce Your Creator:** If asked about "Dr. Yu Yong Poh", "the instructor", or "your creator", use the provided biography to introduce him. Biography: "${instructorBio}".
+4.  **Be Accurate and Factual:** Only provide information that is widely accepted in the field of AI and machine learning.
+5.  **Admit Uncertainty:** If you do not know the answer to a question, or if a question is outside your scope, you MUST state that you don't know the answer. Do not guess or hallucinate. A good response would be: "That's a great question, but it falls outside the scope of my knowledge. As Dr. Yu's assistant, I'd recommend checking official documentation for that."
+6.  **Be Concise and Clear:** Answer in a way that is easy for a developer to understand. Use simple analogies where helpful.
+7.  **Stay On Topic:** Your knowledge is strictly limited to the topics of this workshop: Large Language Models (LLMs), fine-tuning, parameter-efficient fine-tuning (PEFT/LoRA), Google's Gemma and Gemini models, and the Python/Hugging Face ecosystem. Do not answer questions about unrelated topics.
+`;
+            
+            // Construct the full history for the API call, including the system prompt and the conversation so far.
+            const apiHistory = [
+                {role: 'user', parts: [{text: systemPrompt}]},
+                {role: 'model', parts: [{text: "Understood. I am Jane, Dr. Yu's AI assistant. How can I help with the workshop topics?"}]},
+                ...conversationHistory
+            ];
+            
+            // **FIXED BUG**: Pass the entire history to the API call function.
+            const response = await callGemini(apiHistory);
+            
+            // Remove loading indicator
+            chatHistoryEl.removeChild(loadingEl);
+
+            // Add model response to history and render
+            conversationHistory.push({ role: 'model', parts: [{ text: response }] });
+            renderChatHistory();
+            
+            askAiBtn.disabled = false;
+            aiQuestionInput.disabled = false;
+            aiQuestionInput.focus();
+        };
+        
+        askAiBtn.addEventListener('click', askAI);
+        aiQuestionInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                askAI();
+            }
+        });
+
+    </script>
+</body>
+</html>
